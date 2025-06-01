@@ -1,52 +1,45 @@
 package middleware
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
-
-	"dorm-chat-api/utils"
 )
 
-// Protected is a middleware that checks if the request has a valid JWT token
 func Protected() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Get authorization header
-		authHeader := c.Get("Authorization")
-		if authHeader == "" {
-			return fiber.NewError(fiber.StatusUnauthorized, "Authorization header required")
+		auth := c.Get("Authorization")
+		if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
+			return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
 		}
+		tokenString := strings.TrimPrefix(auth, "Bearer ")
+		secret := os.Getenv("JWT_SECRET")
 
-		// Check if the header has the Bearer prefix
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			return fiber.NewError(fiber.StatusUnauthorized, "Invalid authorization header format")
-		}
-
-		// Extract the token
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-
-		// Parse and validate the token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			// Check the signing method
+			// Важно: проверяем, что метод подписи правильный!
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fiber.NewError(fiber.StatusUnauthorized, "Invalid token signing method")
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(utils.GetEnv("JWT_SECRET", "secret")), nil
+			return []byte(secret), nil
 		})
-
-		if err != nil {
-			return fiber.NewError(fiber.StatusUnauthorized, "Invalid or expired token")
+		if err != nil || !token.Valid {
+			return c.Status(401).JSON(fiber.Map{"error": "Invalid token"})
 		}
 
-		// Check if the token is valid
-		if !token.Valid {
-			return fiber.NewError(fiber.StatusUnauthorized, "Invalid token")
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return c.Status(401).JSON(fiber.Map{"error": "Invalid token"})
 		}
 
-		// Set the user in context
-		c.Locals("user", token)
-
+		// Сохраняем user_id вместо s/role
+		userID, ok := claims["user_id"]
+		if !ok {
+			return c.Status(401).JSON(fiber.Map{"error": "user_id not found in token"})
+		}
+		c.Locals("userID", userID)
 		return c.Next()
 	}
 }
