@@ -14,31 +14,20 @@ import (
 )
 
 func main() {
-	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
 
-	// Initialize database
 	db, err := config.InitDB()
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Create Fiber app
-	app := fiber.New(fiber.Config{
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			code := fiber.StatusInternalServerError
-			if e, ok := err.(*fiber.Error); ok {
-				code = e.Code
-			}
-			return c.Status(code).JSON(fiber.Map{
-				"error": err.Error(),
-			})
-		},
-	})
+	if err := config.AutoMigrate(db); err != nil {
+		log.Fatalf("DB migration failed: %v", err)
+	}
 
-	// Middleware
+	app := fiber.New()
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     os.Getenv("ALLOWED_ORIGINS"),
@@ -47,10 +36,8 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	// Setup routes
 	routes.SetupRoutes(app, db)
 
-	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
