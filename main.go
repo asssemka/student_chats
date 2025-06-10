@@ -29,18 +29,18 @@ func main() {
 
 	app := fiber.New()
 	app.Use(logger.New())
+
+	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "https://dormmate-mobile.onrender.com"
+	}
+
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     os.Getenv("ALLOWED_ORIGINS"),
-		AllowMethods:     "GET,POST,PUT,DELETE",
+		AllowOrigins:     allowedOrigins,
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
 		AllowCredentials: true,
 	}))
 
 	routes.SetupRoutes(app, db)
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	log.Fatal(app.Listen(":" + port))
 }
