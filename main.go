@@ -39,7 +39,8 @@ func main() {
 	// Настройка CORS
 	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 	if allowedOrigins == "" {
-		allowedOrigins = "https://dormmate-mobile.onrender.com"
+	        allowedOrigins = "https://dormmate-mobile.onrender.com,http://localhost:55338"
+		
 	}
 
 	app.Use(cors.New(cors.Config{
