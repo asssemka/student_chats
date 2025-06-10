@@ -23,12 +23,13 @@ type DormData struct {
 }
 
 // DormListResponse описывает корневую структуру, возвращаемую Django.
-// {
-//   "count": 2,
-//   "next": null,
-//   "previous": null,
-//   "results": [ { "id": 4, "floors_count": 1, … }, { … } ]
-// }
+//
+//	{
+//	  "count": 2,
+//	  "next": null,
+//	  "previous": null,
+//	  "results": [ { "id": 4, "floors_count": 1, … }, { … } ]
+//	}
 type DormListResponse struct {
 	Count    int        `json:"count"`
 	Next     *string    `json:"next"`
@@ -41,7 +42,7 @@ type DormListResponse struct {
 func CreateAllChatsHandler(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// 1) Запрос к Django, чтобы получить список dorm-ов
-		djangoURL := "http://127.0.0.1:8000/api/v1/dorms/"
+		djangoURL := "https://dormmate-back.onrender.com/api/v1/dorms/"
 		resp, err := http.Get(djangoURL)
 		if err != nil {
 			fmt.Println("ERROR: не удалось выполнить http.Get до Django:", err)
@@ -142,7 +143,7 @@ func CreateAllChatsHandler(db *gorm.DB) fiber.Handler {
 func CleanupChatsHandler(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// 1) Запрос к Django
-		djangoURL := "http://127.0.0.1:8000/api/v1/dorms/"
+		djangoURL := "https://dormmate-back.onrender.com/api/v1/dorms/"
 		resp, err := http.Get(djangoURL)
 		if err != nil {
 			fmt.Println("ERROR: не удалось запросить dorms у Django:", err)
