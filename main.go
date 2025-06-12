@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -11,54 +12,50 @@ import (
 
 	"dorm-chat-api/config"
 	"dorm-chat-api/routes"
+	ws "dorm-chat-api/websocket" // WebSocket-пакет
 )
 
 func main() {
-	// Загрузка переменных окружения из .env
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
 
-	// Инициализация базы данных
 	db, err := config.InitDB()
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Автоматическая миграция моделей
 	if err := config.AutoMigrate(db); err != nil {
 		log.Fatalf("DB migration failed: %v", err)
 	}
 
-	// Создание Fiber-приложения
 	app := fiber.New()
 
-	// Логирование запросов
 	app.Use(logger.New())
-
-	// Настройка CORS
-	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
-	if allowedOrigins == "" {
-		allowedOrigins = "https://dormmate-mobile.onrender.com,http://localhost:55338"
-
-	}
-
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
-		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowOrigins:     os.Getenv("ALLOWED_ORIGINS"),
+		AllowMethods:     "GET,POST,PUT,DELETE",
 		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
 		AllowCredentials: true,
 	}))
 
-	// Настройка маршрутов
+	// 🌐 Создаём WebSocket хаб
+	hub := ws.NewHub()
+	go hub.Run()
+
+	// 📌 Подключаем WebSocket маршрут
+	app.Get("/ws/:chat_id", websocket.New(func(c *websocket.Conn) {
+		ws.ServeWS(hub, c)
+	}))
+
+	// 📦 Остальные HTTP-маршруты
 	routes.SetupRoutes(app, db)
 
-	// Получение порта из переменных окружения или использование порта по умолчанию
+	// 🚀 Запуск
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-
-	// Запуск сервера
+	log.Println("Server running on port " + port)
 	log.Fatal(app.Listen(":" + port))
 }
